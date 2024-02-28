@@ -12,10 +12,10 @@ from sqlalchemy import (
     Float,
     DateTime,
 )
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import select
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.sql import select, update, delete
 from datetime import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_serializer
 from config import (
     POSTGRES_HOST,
     POSTGRES_PORT,
@@ -31,20 +31,37 @@ DATABASE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POST
 engine = create_engine(DATABASE_URL)
 metadata = MetaData()
 # Define the ProcessedAgentData table
-processed_agent_data = Table(
-    "processed_agent_data",
-    metadata,
-    Column("id", Integer, primary_key=True, index=True),
-    Column("road_state", String),
-    Column("user_id", Integer),
-    Column("x", Float),
-    Column("y", Float),
-    Column("z", Float),
-    Column("latitude", Float),
-    Column("longitude", Float),
-    Column("timestamp", DateTime),
-)
+# processed_agent_data = Table(
+#     "processed_agent_data",
+#     mapper_registry.metadata,
+#     Column("id", Integer, primary_key=True, index=True),
+#     Column("road_state", String),
+#     Column("user_id", Integer),
+#     Column("x", Float),
+#     Column("y", Float),
+#     Column("z", Float),
+#     Column("latitude", Float),
+#     Column("longitude", Float),
+#     Column("timestamp", DateTime),
+# )
 SessionLocal = sessionmaker(bind=engine)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class ProcessedAgentDataModel(Base):
+    __tablename__ = "processed_agent_data"
+    id = Column(Integer, primary_key=True, index=True)
+    road_state = Column(String)
+    user_id = Column(Integer)
+    x = Column(Float)
+    y = Column(Float)
+    z = Column(Float)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    timestamp = Column(DateTime)
 
 
 # SQLAlchemy model
@@ -95,6 +112,19 @@ class ProcessedAgentData(BaseModel):
     road_state: str
     agent_data: AgentData
 
+    @model_serializer()
+    def ser_model(self):
+        return {
+            "road_state": self.road_state,
+            "user_id": self.agent_data.user_id,
+            "x": self.agent_data.accelerometer.x,
+            "y": self.agent_data.accelerometer.y,
+            "z": self.agent_data.accelerometer.z,
+            "latitude": self.agent_data.gps.latitude,
+            "longitude": self.agent_data.gps.longitude,
+            "timestamp": self.agent_data.timestamp
+        }
+
 
 # WebSocket subscriptions
 subscriptions: Dict[int, Set[WebSocket]] = {}
@@ -128,7 +158,16 @@ async def send_data_to_subscribers(user_id: int, data):
 async def create_processed_agent_data(data: List[ProcessedAgentData]):
     # Insert data to database
     # Send data to subscribers
-    pass
+    db = SessionLocal()
+    try:
+        for item in data:
+            new_item = ProcessedAgentDataModel(**item.model_dump())
+            db.add(new_item)
+            db.commit()
+            db.refresh(new_item)
+            await send_data_to_subscribers(item.agent_data.user_id, new_item)
+    finally:
+        db.close()
 
 
 @app.get(
@@ -137,13 +176,22 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
 )
 def read_processed_agent_data(processed_agent_data_id: int):
     # Get data by id
-    pass
+    db = SessionLocal()
+    try:
+        item = db.get(ProcessedAgentDataModel, processed_agent_data_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return item
+    finally:
+        db.close()
 
 
 @app.get("/processed_agent_data/", response_model=list[ProcessedAgentDataInDB])
 def list_processed_agent_data():
     # Get list of data
-    pass
+    db = SessionLocal()
+    items = db.scalars(select(ProcessedAgentDataModel)).all()
+    return items
 
 
 @app.put(
@@ -152,16 +200,36 @@ def list_processed_agent_data():
 )
 def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData):
     # Update data
-    pass
+    db = SessionLocal()
+    try:
+        item = db.get(ProcessedAgentDataModel, processed_agent_data_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        db.execute(update(ProcessedAgentDataModel).where(ProcessedAgentDataModel.id == processed_agent_data_id),
+                   {**data.model_dump()})
+        db.commit()
+        db.refresh(item)
+        return item
+    finally:
+        db.close()
 
 
 @app.delete(
     "/processed_agent_data/{processed_agent_data_id}",
-    response_model=ProcessedAgentDataInDB,
+    response_model=bool
 )
 def delete_processed_agent_data(processed_agent_data_id: int):
     # Delete by id
-    pass
+    db = SessionLocal()
+    try:
+        item = db.get(ProcessedAgentDataModel, processed_agent_data_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        db.execute(delete(ProcessedAgentDataModel).where(ProcessedAgentDataModel.id == processed_agent_data_id))
+        db.commit()
+        return True
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
