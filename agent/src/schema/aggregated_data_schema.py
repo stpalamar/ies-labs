@@ -7,6 +7,6 @@ from schema.parking_schema import ParkingSchema
 class AggregatedDataSchema(Schema):
     accelerometer = fields.Nested(AccelerometerSchema)
     gps = fields.Nested(GpsSchema)
-    parking = fields.Nested(ParkingSchema)
+    # parking = fields.Nested(ParkingSchema)
     timestamp = fields.DateTime("iso")
     user_id = fields.Int()

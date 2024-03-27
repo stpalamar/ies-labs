@@ -57,7 +57,7 @@ class FileDatasource:
         return AggregatedData(
             Accelerometer(*accelerometer_data),
             Gps(*gps_data),
-            Parking(parking_data, Gps(*gps_data)),
+            # Parking(parking_data, Gps(*gps_data)),
             datetime.now(),
             config.USER_ID,
         )

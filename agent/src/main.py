@@ -33,27 +33,15 @@ def publish(client, topic, datasource, delay):
         time.sleep(delay)
         data = datasource.read()
 
-        accelerometer_topic = f"{topic}/accelerometer"
-        gps_topic = f"{topic}/gps"
-        parking_topic = f"{topic}/parking"
-
-        accelerometer_msg = AccelerometerSchema().dumps(data.accelerometer)
-        gps_msg = GpsSchema().dumps(data.gps)
-        parking_msg = ParkingSchema().dumps(data.parking)
-
-        accelerometer_result = client.publish(accelerometer_topic, accelerometer_msg)
-        gps_result = client.publish(gps_topic, gps_msg)
-        parking_result = client.publish(parking_topic, parking_msg)
-
+        msg = AggregatedDataSchema().dumps(data)
+        result = client.publish(topic, msg)
         # result: [0, 1]
-        accelerometer_status = accelerometer_result[0]
-        printResult(accelerometer_status, accelerometer_topic)
-
-        gps_status = gps_result[0]
-        printResult(gps_status, gps_topic)
-
-        parking_status = parking_result[0]
-        printResult(parking_status, parking_topic)
+        status = result[0]
+        if status == 0:
+            pass
+            # print(f"Send `{msg}` to topic `{topic}`")
+        else:
+            print(f"Failed to send message to topic {topic}")
 
 def printResult(status, topic):
     if status == 0:
