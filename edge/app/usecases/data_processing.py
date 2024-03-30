@@ -15,7 +15,9 @@ def process_agent_data(
     # Implement it
 
     if agent_data.accelerometer.z < 16000:
-        road_state = 'bad'
+        road_state = 'pothole'
+    elif agent_data.accelerometer.z > 17000:
+        road_state = 'bump'
     else:
         road_state = 'good'
 

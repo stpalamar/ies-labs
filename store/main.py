@@ -148,7 +148,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 async def send_data_to_subscribers(user_id: int, data):
     if user_id in subscriptions:
         for websocket in subscriptions[user_id]:
-            await websocket.send_json(json.dumps(data))
+            await websocket.send_json(json.dumps([
+                item.model_dump(mode='json')
+                for item in data
+            ]))
 
 
 # FastAPI CRUDL endpoints
@@ -160,12 +163,12 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
     # Send data to subscribers
     db = SessionLocal()
     try:
+        await send_data_to_subscribers(1, data)
         for item in data:
             new_item = ProcessedAgentDataModel(**item.model_dump())
             db.add(new_item)
             db.commit()
             db.refresh(new_item)
-            await send_data_to_subscribers(item.agent_data.user_id, new_item)
     finally:
         db.close()
 
