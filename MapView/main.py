@@ -15,7 +15,6 @@ class MapViewApp(App):
         self.map_layer = LineMapLayer()
         self.mapview = None
         self.datasource = Datasource(1)
-        self.car_route_points = []
         # додати необхідні змінні
 
     def on_start(self):
