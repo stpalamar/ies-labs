@@ -127,7 +127,7 @@ services:
       MQTT_BROKER_HOST: "mqtt"
       MQTT_BROKER_PORT: 1883
       MQTT_TOPIC: "agent_data_topic"
-      DELAY: 0.2
+      DELAY: 0.5
     networks:
       mqtt_network:
 

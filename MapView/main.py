@@ -9,9 +9,9 @@ from datasource import Datasource
 class MapViewApp(App):
     def __init__(self, **kwargs):
         super().__init__()
-        self.car_marker = MapMarker(source='images/car.png')
-        self.pothole_marker = MapMarker(source='images/pothole.png')
-        self.bump_marker = MapMarker(source='images/bump.png')
+        self.car_marker = None
+        self.pothole_marker = None
+        self.bump_marker = None
         self.map_layer = LineMapLayer()
         self.mapview = None
         self.datasource = Datasource(1)
@@ -22,9 +22,6 @@ class MapViewApp(App):
         """
         Встановлює необхідні маркери, викликає функцію для оновлення мапи
         """
-        self.mapview.add_marker(self.car_marker)
-        self.mapview.add_marker(self.pothole_marker)
-        self.mapview.add_marker(self.bump_marker)
         self.mapview.add_layer(self.map_layer, mode="scatter")
         Clock.schedule_interval(self.update, 1)  # оновлення кожну секунду
 
@@ -48,21 +45,30 @@ class MapViewApp(App):
         Оновлює відображення маркера машини на мапі
         :param point: GPS координати
         """
-        self.car_marker.lat, self.car_marker.lon = point
+        if self.car_marker is not None:
+            self.mapview.remove_marker(self.car_marker)
+        self.car_marker = MapMarker(source='images/car.png', lat=point[0], lon=point[1])
+        self.mapview.add_marker(self.car_marker)
 
     def set_pothole_marker(self, point):
         """
         Встановлює маркер для ями
         :param point: GPS координати
         """
-        self.pothole_marker.lat, self.pothole_marker.lon = point
+        if self.pothole_marker is not None:
+            self.mapview.remove_marker(self.pothole_marker)
+        self.pothole_marker = MapMarker(source='images/pothole.png', lat=point[0], lon=point[1])
+        self.mapview.add_marker(self.pothole_marker)
 
     def set_bump_marker(self, point):
         """
         Встановлює маркер для лежачого поліцейського
         :param point: GPS координати
         """
-        self.bump_marker.lat, self.bump_marker.lon = point
+        if self.bump_marker is not None:
+            self.mapview.remove_marker(self.bump_marker)
+        self.bump_marker = MapMarker(source='images/bump.png', lat=point[0], lon=point[1])
+        self.mapview.add_marker(self.bump_marker)
 
     def add_to_car_route(self, point):
         """
